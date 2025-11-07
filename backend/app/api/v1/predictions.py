@@ -1,3 +1,4 @@
+import traceback
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -14,8 +15,10 @@ def predict_failure(request: PredictionRequest, db: Session = Depends(get_db)):
     Predicts the failure risk and provides a recommendation.
     """
     try:
-        risk_score = make_prediction(request, model_version="v1.0")
-
+        # This returns a numpy.float32
+        risk_score_raw = make_prediction(request, model_version="v1.0")
+        # Convert it to a standard Python float
+        risk_score = float(risk_score_raw)
         # Determine recommendation based on risk score
         recommendation = "No action needed"
         if risk_score > 0.75:
@@ -37,4 +40,7 @@ def predict_failure(request: PredictionRequest, db: Session = Depends(get_db)):
         return PredictionResponse(failure_risk=risk_score, recommendation=recommendation)
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            print("\n---  PREDICTION FAILED :( ---")
+            traceback.print_exc()
+            print("---------------------------------\n")
+            raise HTTPException(status_code=500, detail=str(e))

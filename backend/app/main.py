@@ -1,4 +1,7 @@
 from fastapi import FastAPI
+# IMPORT THE NEW MIDDLEWARE
+from fastapi.middleware.cors import CORSMiddleware 
+
 from app.db import models
 from app.db.database import engine
 from app.api.v1 import auth, predictions, machines
@@ -10,6 +13,21 @@ app = FastAPI(
     title="Predictive Maintenance API",
     description="API for predicting part failures and managing machine data.",
     version="1.0.0"
+)
+
+# --- DEFINE YOUR ALLOWED ORIGINS ---
+# This is your frontend's address
+origins = [
+    "http://localhost:5173",
+]
+
+# --- ADD THE MIDDLEWARE TO YOUR APP ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
 )
 
 # --- Include API Routers ---
