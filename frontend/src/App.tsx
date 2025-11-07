@@ -19,9 +19,9 @@ function App() {
       <Route
         path="/"
         element={
-          <PublicRoute>
+          <ProtectedRoute>
             <DashboardPage />
-          </PublicRoute>
+          </ProtectedRoute>
         }
       />
     </Routes>

@@ -1,0 +1,23 @@
+# --- General ---
+.DS_Store
+*.log
+.env
+/backend/.env
+/frontend/.env
+
+# --- Python / Backend ---
+/backend/venv/
+/backend/app/__pycache__/
+/backend/app/db/__pycache__/
+/backend/app/core/__pycache__/
+/backend/app/schemas/__pycache__/
+/backend/app/services/__pycache__/
+/backend/app/api/__pycache__/
+/backend/app/api/v1/__pycache__/
+*.pyc
+
+# --- Node / Frontend ---
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+npm-debug.log
