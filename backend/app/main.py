@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import models
 from app.db.database import engine
-from app.api.v1 import auth, predictions, machines
+from app.api.v1 import auth, predictions, machines, parts
 
 # Create all database tables
 models.Base.metadata.create_all(bind=engine)
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(predictions.router, prefix="/api/v1/predictions", tags=["Predictions"])
 app.include_router(machines.router, prefix="/api/v1/machines", tags=["Machines"])
+app.include_router(parts.router, prefix="/api/v1/parts", tags=["Parts"])
 
 
 @app.get("/", tags=["Root"])
