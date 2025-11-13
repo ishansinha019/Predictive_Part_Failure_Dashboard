@@ -6,14 +6,22 @@ from src.preprocess import load_data, preprocess_data
 
 def train_model():
     print("Loading raw data...")
-    # In a real project, you'd pass a file path
-    df = load_data(raw_data_path=None) 
     
+    # --- UPDATED ---
+    # Define the path to your real data
+    data_path = 'data/service_history_extended.csv'
+    df = load_data(raw_data_path=data_path) 
+    
+    if df is None:
+        print("Data loading failed. Exiting.")
+        return
+
     print("Preprocessing data...")
     X_train, X_test, y_train, y_test, encoder, feature_columns = preprocess_data(df)
 
     print("Training XGBoost model...")
-    # We use scale_pos_weight for imbalanced classes (like failure)
+    # We use scale_pos_weight to handle the class imbalance found in the notebook
+    # The failure rate is ~22%, so a weight of ~78/22 = 3.5 is good. Let's stick with 5 for a stronger penalty.
     model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', scale_pos_weight=5)
     model.fit(X_train, y_train)
 

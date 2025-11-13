@@ -3,35 +3,46 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 
 def load_data(raw_data_path):
-    """Loads the raw data CSV."""
-    # This is a mock function to create sample data
-    # In a real-world scenario, you'd use pd.read_csv(raw_data_path)
-    data = {
-        'machine_id': ['M-185', 'M-185', 'M-201', 'M-202', 'M-185', 'M-201'],
-        'part_id': ['P-BRG-02', 'P-FAN-01', 'P-BRG-02', 'P-PMP-04', 'P-BRG-02', 'P-FAN-01'],
-        'time_in_service_days': [450, 450, 600, 120, 700, 700],
-        'service_type': ['Routine Check', 'Failure', 'Routine Check', 'Failure', 'Routine Check', 'Failure'],
-        'failed': [0, 1, 0, 1, 0, 1]
-    }
-    # Add more data to make the model meaningful
-    for _ in range(100):
-        data['machine_id'].append('M-185')
-        data['part_id'].append('P-BRG-02')
-        data['time_in_service_days'].append(300 + (_ * 5))
-        data['service_type'].append('Routine Check')
-        data['failed'].append(0)
-
-    return pd.DataFrame(data)
+    """
+    Loads the raw data from the service_history_extended.csv file.
+    """
+    try:
+        df = pd.read_csv(raw_data_path)
+    except FileNotFoundError:
+        print(f"Error: Data file not found at {raw_data_path}")
+        return None
+    
+    # --- Feature Engineering (from Notebook 2) ---
+    # Create the 'machine_type' feature by splitting the 'machine_id'
+    df['machine_type'] = df['machine_id'].str.split('-').str[0]
+    
+    # Rename 'part_failed' to 'failed' to match the original script's target variable
+    df = df.rename(columns={'part_failed': 'failed'})
+    
+    # Drop columns that are not used for training
+    df = df.drop(columns=['service_id', 'service_date'])
+    
+    print(f"Successfully loaded and engineered data from {raw_data_path}")
+    return df
 
 def preprocess_data(df):
-    """Applies one-hot encoding to categorical features."""
+    """
+    Applies one-hot encoding to all categorical features.
+    """
     
-    categorical_features = ['machine_id', 'part_id', 'service_type']
+    # --- UPDATED ---
+    # Add 'machine_type' to the list of categorical features
+    categorical_features = ['machine_id', 'part_id', 'service_type', 'machine_type']
     numerical_features = ['time_in_service_days']
     target = 'failed'
 
+    # Filter out any potential rows with NaNs just in case
+    df = df.dropna(subset=categorical_features + numerical_features + [target])
+
     # Set up the encoder
     encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
+    
+    # We fit the encoder on the categorical features
     encoder.fit(df[categorical_features])
     
     # Transform data
@@ -49,6 +60,6 @@ def preprocess_data(df):
     feature_columns = X.columns.tolist()
 
     # Split the data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
     return X_train, X_test, y_train, y_test, encoder, feature_columns
