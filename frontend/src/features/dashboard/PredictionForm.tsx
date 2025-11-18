@@ -3,13 +3,18 @@ import apiService from '../../api/apiService';
 import { PredictionRequest } from '../../types';
 import RiskGauge from './RiskGauge';
 
-// Props: Receives machineId from the parent page
+// Props: Receives IDs and event handlers from the parent page
 interface PredictionFormProps {
   machineId: string;
   onPredictionSuccess: () => void;
+  onPartIdChange: (newPartId: string) => void;
 }
 
-const PredictionForm: React.FC<PredictionFormProps> = ({ machineId, onPredictionSuccess }) => {
+const PredictionForm: React.FC<PredictionFormProps> = ({
+  machineId,
+  onPredictionSuccess,
+  onPartIdChange,
+}) => {
   
   // State: Uses the machineId prop for its initial state
   const [formData, setFormData] = useState<PredictionRequest>({
@@ -20,9 +25,16 @@ const PredictionForm: React.FC<PredictionFormProps> = ({ machineId, onPrediction
   const [result, setResult] = useState<any>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, type, value } = e.target;
     // Handle number conversion for the 'days' field
-    const value = e.target.type === 'number' ? e.target.valueAsNumber : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    const val = type === 'number' ? e.target.valueAsNumber : value;
+    
+    setFormData({ ...formData, [name]: val });
+
+    // If the part_id field changed, notify the parent page
+    if (name === 'part_id') {
+      onPartIdChange(value);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,13 +42,14 @@ const PredictionForm: React.FC<PredictionFormProps> = ({ machineId, onPrediction
     try {
       const response = await apiService.post('/predictions/predict', formData);
       setResult(response.data);
-      onPredictionSuccess(); // Triggers the chart refresh
+      onPredictionSuccess(); // Triggers the history chart refresh
     } catch (error) {
       console.error("Prediction failed", error);
     }
   };
 
   return (
+    // Styled "card" container
     <div className="border border-slate-200 p-6 rounded-lg shadow-sm bg-white">
       <h3 className="text-xl font-semibold mb-6 text-slate-800">
         Make a New Prediction
