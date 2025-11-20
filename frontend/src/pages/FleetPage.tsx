@@ -1,54 +1,172 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import Navbar from '../components/layout/Navbar';
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import Navbar from "../components/layout/Navbar";
+import apiService from "../api/apiService";
+import styles from "./FleetPage.module.css";
 
-// Mock data for our fleet
-const machines = [
-  { id: 'M-185', status: 'Operational', risk: 'Low' },
-  { id: 'M-201', status: 'Operational', risk: 'Low' },
-  { id: 'M-202', status: 'At Risk', risk: 'Medium' },
-];
-
-// A simple "Fleet Card" component
-const FleetCard: React.FC<{ machine: any }> = ({ machine }) => {
-  const statusColor = machine.status === 'At Risk' ? 'text-yellow-500' : 'text-green-500';
-
+const FleetCard: React.FC<{ machineId: string }> = ({ machineId }) => {
   return (
-    // Make the whole card a clickable link
-    <Link 
-      to={`/machine/${machine.id}`}
-      className="bg-white border border-slate-200 p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-    >
-      <h3 className="text-xl font-semibold text-slate-800">{machine.id}</h3>
-      <p className="text-slate-600 mt-2">
-        Status: <span className={`font-medium ${statusColor}`}>{machine.status}</span>
+    <Link to={`/machine/${machineId}`} className={styles.card}>
+      <div className={styles.cardHead}>
+        <h3 className={styles.cardTitle}>{machineId}</h3>
+        <span className={styles.pill}>Active</span>
+      </div>
+
+      <p className={styles.cardSub}>
+        Status: <span className={styles.strong}>Operational</span>
       </p>
-      <p className="text-slate-600">
-        Failure Risk: <span className="font-medium">{machine.risk}</span>
-      </p>
-      <div className="mt-4 text-blue-600 font-medium">
-        View Details &rarr;
+
+      <div className={styles.cardAction}>
+        <span>View Dashboard</span>
+        <svg
+          className={styles.chevron}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
       </div>
     </Link>
   );
 };
 
-// The main FleetPage component
-const FleetPage = () => {
+const FleetPage: React.FC = () => {
+  const [allMachines, setAllMachines] = useState<string[]>([]);
+  const [displayedMachines, setDisplayedMachines] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchMachines = async () => {
+      setLoading(true);
+
+      try {
+        const response = await apiService.get("/machines/");
+        const machineIds = response.data.map((m: any) => m.machine_id);
+        machineIds.sort();
+
+        setAllMachines(machineIds);
+        setDisplayedMachines(machineIds.slice(0, 4));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMachines();
+  }, []);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+
+    if (!term.trim()) {
+      setDisplayedMachines(allMachines.slice(0, 4));
+    } else {
+      setDisplayedMachines(
+        allMachines.filter((id) =>
+          id.toLowerCase().includes(term.toLowerCase())
+        )
+      );
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className={styles.appRoot}>
       <Navbar />
-      <main className="p-6 md:p-8">
-        <h2 className="text-3xl font-bold text-slate-900 mb-6">
-          Machine Fleet
-        </h2>
-        
-        {/* Grid layout for the cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {machines.map(machine => (
-            <FleetCard key={machine.id} machine={machine} />
-          ))}
+
+      {/* ------------ TOP HERO SECTION ------------ */}
+      <header className={styles.hero}>
+        <div className={styles.heroInner}>
+          <h2>Machine Fleet Overview</h2>
+          <p>
+            Monitor real-time health and historical failure risks for all {" "}
+            <strong>{allMachines.length}</strong> units in your facility.
+          </p>
         </div>
+      </header>
+
+      <main className={styles.main}>
+        {/* ------------ SEARCH BAR (MOVED LOWER) ------------ */}
+        <div className={styles.controlsContainer}>
+          <div className={styles.searchWrap}>
+            <div className={styles.magWrap}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Search machines by ID..."
+              list="machine-datalist"
+              className={styles.searchInput}
+              value={searchTerm}
+              onChange={handleSearch}
+            />
+
+            <datalist id="machine-datalist">
+              {allMachines.map((id) => (
+                <option key={id} value={id} />
+              ))}
+            </datalist>
+          </div>
+
+          <div className={styles.controlsRight}>
+            <span className={styles.count}>
+              Showing <strong>{displayedMachines.length}</strong> of {" "}
+              <strong>{allMachines.length}</strong>
+            </span>
+
+            <button
+              className={`${styles.btn} ${styles.secondary}`}
+              onClick={() => {
+                setSearchTerm("");
+                setDisplayedMachines(allMachines.slice(0, 4));
+              }}
+            >
+              Clear
+            </button>
+
+            {searchTerm === "" && displayedMachines.length < allMachines.length && (
+              <button
+                className={`${styles.btn} ${styles.primary}`}
+                onClick={() => setDisplayedMachines(allMachines)}
+              >
+                Load All
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ------------ MACHINE GRID ------------ */}
+        <section className={styles.grid}>
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className={styles.skeleton} />
+            ))
+          ) : displayedMachines.length ? (
+            displayedMachines.map((id) => <FleetCard key={id} machineId={id} />)
+          ) : (
+            <div className={styles.empty}>
+              <p>
+                No machines found matching <strong>{searchTerm}</strong>
+              </p>
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );

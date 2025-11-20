@@ -1,0 +1,221 @@
+:root{
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --muted: #6b7280;
+    --accent: #0f62fe;
+    --pill-bg: #e6ffed;
+    --pill-text: #05603a;
+    --shadow: 0 6px 18px rgba(15,23,42,0.06);
+    --radius: 12px;
+    --container: 1200px;
+    --surface-2: #f3f4f6;
+  }
+  
+  /* Basic reset for the module scope */
+  .appRoot, .appRoot * { box-sizing: border-box; }
+  
+  .appRoot {
+    background: var(--bg);
+    min-height: 100vh;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #0f172a;
+  }
+  
+  /* HERO */
+  .hero {
+    background: #26272a; /* dark band behind the hero */
+    color: white;
+    padding: 28px 20px 32px; /* slightly larger bottom padding so content doesn't overlap */
+  }
+  .heroInner {
+    max-width: var(--container);
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+  .hero h2 {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .hero p {
+    margin: 0;
+    color: #d1d5db;
+    font-size: 14px;
+  }
+  
+  /* MAIN LAYOUT - adjusted to avoid heavy overlap */
+  .main {
+    max-width: var(--container);
+    margin: 0 auto 48px; /* removed negative overlap so search sits below hero */
+    padding: 24px 16px 40px; /* added top padding so the controls are comfortably below the hero */
+  }
+  
+  /* CONTROLS CARD */
+  .controlsContainer {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(15,23,42,0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    z-index: 2; /* keep it above background but below the header nav */
+  }
+  @media (min-width: 720px) {
+    .controlsContainer { flex-direction: row; align-items: center; justify-content: space-between; gap: 20px; }
+  }
+  
+  /* SEARCH WRAP (moved lower than hero header) */
+  .searchWrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 720px;
+    position: relative;
+  }
+  
+  .searchInput {
+    width: 100%;
+    padding: 10px 12px 10px 38px; /* leaves room for icon */
+    border-radius: 10px;
+    border: 1px solid rgba(15,23,42,0.06);
+    font-size: 14px;
+    background: white;
+    outline: none;
+  }
+  .searchInput:focus {
+    box-shadow: 0 4px 14px rgba(15,99,255,0.12);
+    border-color: rgba(15,99,255,0.2);
+  }
+  
+  /* Magnifier icon container - explicit sizes to avoid global svg scaling issues */
+  .magWrap {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    pointer-events: none;
+  }
+  .magWrap svg { width: 100%; height: 100%; display: block; }
+  
+  .controlsRight {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+  }
+  
+  .count {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 8px;
+    border: 1px solid rgba(15,23,42,0.06);
+    background: white;
+    cursor: pointer;
+  }
+  .btn.secondary { color: #0f172a; }
+  .btn.primary { background: var(--accent); color: white; border: none; }
+  .btn:focus { box-shadow: 0 6px 20px rgba(15,99,255,0.12); outline: none; }
+  
+  /* GRID & CARDS */
+  .grid {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 640px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 980px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+  
+  .card {
+    display: block;
+    text-decoration: none;
+    background: var(--card);
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(15,23,42,0.04);
+    color: inherit;
+    transition: transform .14s ease, box-shadow .14s ease;
+  }
+  .card:hover, .card:focus { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(15,23,42,0.08); }
+  
+  .cardHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  
+  .cardTitle {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: calc(100% - 70px);
+  }
+  
+  .pill {
+    background: var(--pill-bg);
+    color: var(--pill-text);
+    font-size: 12px;
+    padding: 6px 8px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  
+  .cardSub {
+    margin: 0 0 10px 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .strong { color: #111827; font-weight: 600; }
+  
+  .cardAction {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .chevron { width: 14px; height: 14px; flex: 0 0 14px; color: var(--accent); }
+  
+  /* SKELETON / EMPTY */
+  .skeleton { height: 120px; border-radius: 10px; background: var(--surface-2); border: 1px solid rgba(15,23,42,0.03); }
+  .empty {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 26px;
+    text-align: center;
+    border: 1px dashed rgba(15,23,42,0.06);
+  }
+  
+  /* small utility */
+  .mt-8 { margin-top: 32px; }
+  
+  /* make sure svgs inside this module don't get blown up by global rules */
+  .fp-svg-safe, svg { max-width: 100%; height: auto; }
+  
