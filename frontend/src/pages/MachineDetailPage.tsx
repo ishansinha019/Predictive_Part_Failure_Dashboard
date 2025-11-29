@@ -5,6 +5,7 @@ import PredictionForm from '../features/dashboard/PredictionForm';
 import HistoryChart from '../features/dashboard/HistoryChart';
 import ReliabilityChart from '../features/dashboard/ReliabilityChart'; // 1. Import new chart
 import apiService from '../api/apiService'; // 2. Import apiService
+import FinancialImpactCard from '../features/dashboard/FinancialImpactCard';
 
 const MachineDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -13,6 +14,7 @@ const MachineDetailPage = () => {
   // 3. Add state for the new feature
   const [currentPartId, setCurrentPartId] = useState('P-BRG-02'); // Default part
   const [partStats, setPartStats] = useState<number[]>([]);
+  const [currentRisk, setCurrentRisk] = useState<number>(0);
 
   // 4. Add a useEffect to fetch reliability data when partId changes
   useEffect(() => {
@@ -73,7 +75,7 @@ const MachineDetailPage = () => {
             />
           </div>
         </div>
-
+        <FinancialImpactCard partId={currentPartId} failureRisk={0.85} />
         {/* 7. Add the new ReliabilityChart in a full-width row */}
         <div className="w-full">
           <ReliabilityChart data={partStats} partId={currentPartId} />
