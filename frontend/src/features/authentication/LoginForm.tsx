@@ -17,14 +17,23 @@ const LoginForm = () => {
       formData.append('username', username);
       formData.append('password', password);
       
-      const response = await apiService.post('/auth/token', formData);
+      const response = await apiService.post('/auth/token', formData, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
       const { access_token } = response.data;
       
       // In a real app, you'd fetch user details separately
       login({ username: username }, access_token);
 
-    } catch (err) {
-      setError('Invalid username or password.');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      if (err.response) {
+        setError(err.response.data?.detail || 'Invalid username or password.');
+      } else if (err.request) {
+        setError('Cannot connect to backend server. Ensure the backend is running on http://127.0.0.1:8000.');
+      } else {
+        setError(err.message || 'Invalid username or password.');
+      }
     }
   };
 

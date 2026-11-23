@@ -2,7 +2,7 @@ import joblib
 import pandas as pd
 from app.schemas.prediction import PredictionRequest
 
-# --- In-memory cache for the loaded model ---
+# --- In-memory cache for the loaded model (v1.0 trained on service_history_extended) ---
 model_cache = {}
 
 def load_model(version: str = "v1.0"):

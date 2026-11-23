@@ -6,12 +6,14 @@ import RiskGauge from './RiskGauge';
 // Props: Receives IDs and event handlers from the parent page
 interface PredictionFormProps {
   machineId: string;
-  onPredictionSuccess: () => void;
+  initialPartId?: string;
+  onPredictionSuccess: (riskScore?: number) => void;
   onPartIdChange: (newPartId: string) => void;
 }
 
 const PredictionForm: React.FC<PredictionFormProps> = ({
   machineId,
+  initialPartId,
   onPredictionSuccess,
   onPartIdChange,
 }) => {
@@ -19,10 +21,16 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
   // State: Uses the machineId prop for its initial state
   const [formData, setFormData] = useState<PredictionRequest>({
     machine_id: machineId,
-    part_id: 'P-BRG-02',
+    part_id: initialPartId || 'P-BRG-02',
     time_in_service_days: 450,
   });
   const [result, setResult] = useState<any>(null);
+
+  React.useEffect(() => {
+    if (initialPartId) {
+      setFormData(prev => ({ ...prev, part_id: initialPartId }));
+    }
+  }, [initialPartId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, type, value } = e.target;
@@ -42,7 +50,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     try {
       const response = await apiService.post('/predictions/predict', formData);
       setResult(response.data);
-      onPredictionSuccess(); // Triggers the history chart refresh
+      onPredictionSuccess(response.data.failure_risk); // Triggers the history chart refresh & updates current risk
     } catch (error) {
       console.error("Prediction failed", error);
     }

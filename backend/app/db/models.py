@@ -1,14 +1,12 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
-from .database import Base
-import datetime
+"""
+Database models package re-export.
+Provides backward compatibility for existing code importing from app.db.models.
+"""
+from app.db.database import Base
+from app.models.user import User
+from app.models.machine import Machine
+from app.models.part import Part
+from app.models.prediction_log import PredictionLog
+from app.models.work_order import WorkOrder
 
-class PredictionLog(Base):
-    __tablename__ = "prediction_logs"
-
-    id = Column(Integer, primary_key=True, index=True)
-    machine_id = Column(String, index=True)
-    part_id = Column(String, index=True)
-    time_in_service_days = Column(Integer)
-    prediction_score = Column(Float)
-    recommendation = Column(String)
-    prediction_timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+__all__ = ["Base", "User", "Machine", "Part", "PredictionLog", "WorkOrder"]

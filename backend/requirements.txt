@@ -1,7 +1,8 @@
 fastapi
 uvicorn[standard]
 pydantic-settings
-sqlalchemy
+sqlalchemy>=2.0
+alembic
 psycopg2-binary
 passlib[bcrypt]
 python-jose[cryptography]
@@ -9,3 +10,5 @@ python-multipart
 scikit-learn
 xgboost
 pandas
+pytest
+httpx

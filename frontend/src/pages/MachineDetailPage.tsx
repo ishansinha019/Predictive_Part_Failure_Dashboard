@@ -16,7 +16,26 @@ const MachineDetailPage = () => {
   const [partStats, setPartStats] = useState<number[]>([]);
   const [currentRisk, setCurrentRisk] = useState<number>(0);
 
-  // 4. Add a useEffect to fetch reliability data when partId changes
+  // 4. Add a useEffect to fetch initial machine status and reliability data
+  useEffect(() => {
+    const fetchInitialMachineStatus = async () => {
+      try {
+        const response = await apiService.get(`/machines/${machineId}/history`);
+        if (response.data && response.data.length > 0) {
+          const latest = response.data[0];
+          setCurrentRisk(latest.prediction_score);
+          if (latest.part_id) {
+            setCurrentPartId(latest.part_id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch initial machine history", error);
+      }
+    };
+
+    fetchInitialMachineStatus();
+  }, [machineId]);
+
   useEffect(() => {
     if (!currentPartId) return;
 
@@ -37,7 +56,10 @@ const MachineDetailPage = () => {
     return <div>Error: No machine ID specified.</div>;
   }
 
-  const handlePredictionSuccess = () => {
+  const handlePredictionSuccess = (riskScore?: number) => {
+    if (riskScore !== undefined) {
+      setCurrentRisk(riskScore);
+    }
     setRefreshKey(prevKey => prevKey + 1);
   };
 
@@ -64,6 +86,7 @@ const MachineDetailPage = () => {
           <div className="lg:flex-1">
             <PredictionForm 
               machineId={machineId}
+              initialPartId={currentPartId}
               onPredictionSuccess={handlePredictionSuccess}
               onPartIdChange={handlePartIdChange} // 6. Pass the handler down
             />
@@ -75,7 +98,7 @@ const MachineDetailPage = () => {
             />
           </div>
         </div>
-        <FinancialImpactCard partId={currentPartId} failureRisk={0.85} />
+        <FinancialImpactCard partId={currentPartId} failureRisk={currentRisk} />
         {/* 7. Add the new ReliabilityChart in a full-width row */}
         <div className="w-full">
           <ReliabilityChart data={partStats} partId={currentPartId} />

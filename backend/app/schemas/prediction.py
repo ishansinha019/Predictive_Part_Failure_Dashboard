@@ -1,5 +1,5 @@
-from pydantic import BaseModel
 from datetime import datetime
+from pydantic import BaseModel, ConfigDict
 
 class PredictionRequest(BaseModel):
     machine_id: str
@@ -17,5 +17,4 @@ class PredictionLogInDB(BaseModel):
     prediction_score: float
     prediction_timestamp: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
