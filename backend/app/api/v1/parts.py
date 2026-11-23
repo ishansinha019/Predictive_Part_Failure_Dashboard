@@ -5,8 +5,9 @@ from typing import List
 from app.db import models
 from app.db.database import get_db
 from app.schemas.part import PartStatsResponse
+from app.api.deps import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 @router.get("/{part_id}/stats", response_model=PartStatsResponse)
 def get_part_failure_stats(part_id: str, db: Session = Depends(get_db)):

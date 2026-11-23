@@ -55,3 +55,21 @@ def test_read_users_me_authenticated(client, auth_headers, test_user):
 def test_read_users_me_unauthenticated(client):
     response = client.get("/api/v1/auth/me")
     assert response.status_code == 401
+
+@pytest.mark.parametrize(
+    ("method", "path", "json"),
+    [
+        ("get", "/api/v1/machines/", None),
+        ("get", "/api/v1/machines/M-1000/history", None),
+        ("get", "/api/v1/parts/P-BRG-02/stats", None),
+        ("post", "/api/v1/predictions/predict", {
+            "machine_id": "M-1000",
+            "part_id": "P-BRG-02",
+            "time_in_service_days": 10,
+        }),
+        ("post", "/api/v1/simulation/daily-scan", None),
+    ],
+)
+def test_data_routes_require_authentication(client, method, path, json):
+    response = client.request(method.upper(), path, json=json)
+    assert response.status_code == 401

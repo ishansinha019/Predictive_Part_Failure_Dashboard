@@ -2,12 +2,9 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from app.db.database import SessionLocal, engine
+from app.db.database import SessionLocal
 from app.db import models
 from app.core.security import get_password_hash
-
-# Ensure tables are created
-models.Base.metadata.create_all(bind=engine)
 
 PARTS_CATALOG = [
     {

@@ -4,6 +4,7 @@
 .env
 /backend/.env
 /frontend/.env
+/backend/sql_app.db
 
 # --- Python / Backend ---
 /backend/venv/
@@ -15,6 +16,9 @@
 /backend/app/api/__pycache__/
 /backend/app/api/v1/__pycache__/
 *.pyc
+/ml_model/outputs/
+/ml_model/mlruns/
+/ml_model/mlflow.db
 
 # --- Node / Frontend ---
 /frontend/node_modules/

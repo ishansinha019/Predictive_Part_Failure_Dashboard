@@ -6,8 +6,9 @@ from app.schemas.prediction import PredictionRequest, PredictionResponse
 from app.services.ml_loader import make_prediction
 from app.db import models
 from app.db.database import get_db
+from app.api.deps import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 @router.post("/predict", response_model=PredictionResponse)
 def predict_failure(request: PredictionRequest, db: Session = Depends(get_db)):
@@ -16,7 +17,7 @@ def predict_failure(request: PredictionRequest, db: Session = Depends(get_db)):
     """
     try:
         # This returns a numpy.float32
-        risk_score_raw = make_prediction(request, model_version="v1.0")
+        risk_score_raw = make_prediction(request)
         # Convert it to a standard Python float
         risk_score = float(risk_score_raw)
         # Determine recommendation based on risk score

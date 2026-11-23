@@ -5,8 +5,9 @@ from app.db import models
 from app.db.database import get_db
 from app.services.ml_loader import make_prediction
 from app.schemas.prediction import PredictionRequest
+from app.api.deps import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 @router.post("/daily-scan")
 def run_daily_fleet_scan(db: Session = Depends(get_db)):

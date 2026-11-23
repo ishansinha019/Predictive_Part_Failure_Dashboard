@@ -1,1 +1,14 @@
-Generic single-database configuration.
+Apply database schema migrations from the backend directory before starting
+the application or running the seed/data-generation scripts:
+
+    alembic upgrade head
+
+Warning: the current initial revision assumes tables already exist and fails
+on a fresh database. Do not run it against an existing database without first
+backing up the database and verifying its schema and migration state. A proper
+baseline migration is still needed.
+
+The application and scripts do not create tables automatically. Use Alembic
+to manage schema changes; generate a revision with:
+
+    alembic revision --autogenerate -m "describe the schema change"

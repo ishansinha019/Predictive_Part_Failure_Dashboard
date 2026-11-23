@@ -3,3 +3,7 @@ scikit-learn
 xgboost
 joblib
 notebook
+pandera>=0.24
+mlflow
+matplotlib
+pytest

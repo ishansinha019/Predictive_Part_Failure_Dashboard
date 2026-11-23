@@ -2,11 +2,8 @@ import os
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from app.db.database import SessionLocal, engine
+from app.db.database import SessionLocal
 from app.db import models
-
-# Initialize DB
-models.Base.metadata.create_all(bind=engine)
 
 def generate_fleet():
     db = SessionLocal()

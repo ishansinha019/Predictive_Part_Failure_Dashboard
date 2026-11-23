@@ -4,17 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.db import models
-from app.db.database import engine, get_db
+from app.db.database import get_db
 from app.api.v1 import auth, predictions, machines, parts, simulation 
 from app.core.middleware import TelemetryMiddleware
 from app.core.logging import setup_logging
 
 # Setup application logging
 setup_logging()
-
-# Create all database tables
-models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Predictive Maintenance API",

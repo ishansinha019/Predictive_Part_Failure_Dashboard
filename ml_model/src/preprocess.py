@@ -1,65 +1,45 @@
+from pathlib import Path
+
 import pandas as pd
+from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-def load_data(raw_data_path):
-    """
-    Loads the raw data from the service_history_extended.csv file.
-    """
-    try:
-        df = pd.read_csv(raw_data_path)
-    except FileNotFoundError:
-        print(f"Error: Data file not found at {raw_data_path}")
-        return None
-    
-    # --- Feature Engineering (from Notebook 2) ---
-    # Create the 'machine_type' feature by splitting the 'machine_id'
-    df['machine_type'] = df['machine_id'].str.split('-').str[0]
-    
-    # Rename 'part_failed' to 'failed' to match the original script's target variable
-    df = df.rename(columns={'part_failed': 'failed'})
-    
-    # Drop columns that are not used for training
-    df = df.drop(columns=['service_id', 'service_date'])
-    
-    print(f"Successfully loaded and engineered data from {raw_data_path}")
-    return df
+from src.validate import validate_dataset
 
-def preprocess_data(df):
-    """
-    Applies one-hot encoding to all categorical features.
-    """
-    
-    # --- UPDATED ---
-    # Add 'machine_type' to the list of categorical features
-    categorical_features = ['machine_id', 'part_id', 'service_type', 'machine_type']
-    numerical_features = ['time_in_service_days']
-    target = 'failed'
+FEATURES = ["machine_id", "part_id", "time_in_service_days"]
+CATEGORICAL_FEATURES = ["machine_id", "part_id"]
+TARGET = "part_failed"
 
-    # Filter out any potential rows with NaNs just in case
-    df = df.dropna(subset=categorical_features + numerical_features + [target])
 
-    # Set up the encoder
-    encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
-    
-    # We fit the encoder on the categorical features
-    encoder.fit(df[categorical_features])
-    
-    # Transform data
-    encoded_data = encoder.transform(df[categorical_features])
-    encoded_columns = encoder.get_feature_names_out(categorical_features)
-    
-    X_encoded = pd.DataFrame(encoded_data, columns=encoded_columns)
-    X_numerical = df[numerical_features]
-    
-    # Combine all features
-    X = pd.concat([X_numerical.reset_index(drop=True), X_encoded.reset_index(drop=True)], axis=1)
-    y = df[target]
-    
-    # Get all feature columns for the backend to use
-    feature_columns = X.columns.tolist()
+def load_data(raw_data_path: str | Path) -> pd.DataFrame:
+    data = pd.read_csv(raw_data_path)
+    data["service_date"] = pd.to_datetime(data["service_date"], errors="raise")
+    return validate_dataset(data)
 
-    # Split the data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-    
-    return X_train, X_test, y_train, y_test, encoder, feature_columns
+
+def chronological_split(data: pd.DataFrame, test_fraction: float = 0.2):
+    """Split at a date boundary so a day never spans training and evaluation."""
+    dates = sorted(data["service_date"].unique())
+    if len(dates) < 2:
+        raise ValueError("At least two distinct service dates are required.")
+    train_dates, test_dates = train_test_split(
+        dates, test_size=test_fraction, shuffle=False
+    )
+    train = data[data["service_date"].isin(train_dates)].copy()
+    test = data[data["service_date"].isin(test_dates)].copy()
+    for name, split in (("train", train), ("test", test)):
+        if split[TARGET].nunique() != 2:
+            raise ValueError(f"{name} split must contain both failure classes.")
+    return train, test
+
+
+def build_pipeline(estimator):
+    preprocessor = ColumnTransformer(
+        [
+            ("categorical", OneHotEncoder(handle_unknown="ignore"), CATEGORICAL_FEATURES),
+            ("numeric", StandardScaler(), ["time_in_service_days"]),
+        ]
+    )
+    return Pipeline([("preprocessor", preprocessor), ("model", estimator)])

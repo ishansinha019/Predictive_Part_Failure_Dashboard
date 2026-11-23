@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    MODEL_VERSION: str = "v1.0"
 
     # This line tells Pydantic to load the variables from the .env file
     model_config = SettingsConfigDict(env_file=".env")

@@ -6,13 +6,14 @@ from pydantic import BaseModel
 from app.db import models
 from app.db.database import get_db
 from app.schemas.prediction import PredictionLogInDB
+from app.api.deps import get_current_user
 
 # Define a simple schema for the machine list
 class MachineSummary(BaseModel):
     machine_id: str
     last_updated: str
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 # --- 1. GET ALL MACHINES (For Fleet Page) ---
 @router.get("/", response_model=List[MachineSummary])
