@@ -2,7 +2,7 @@
 
 **Project Name**: Predictive Part Failure Dashboard (PPFD)  
 **Execution Strategy**: Milestone-Based Incremental Delivery  
-**Document Version**: 2.0  
+**Document Version**: 2.1
 
 ---
 
@@ -14,15 +14,35 @@
 
 ---
 
-## Milestone 1: Backend Architecture, Relational Modeling & Authentication [COMPLETED & VERIFIED]
+## Current Status (reviewed 2026-11-25)
 
-**Status**: Completed & Verified (13/13 Pytest Suites Passing, Initial Alembic Revision Generated, Database Seeded)
+Milestone 3 development can begin, but the project is **not yet ready for a
+fully verified work-order lifecycle or production use**. Repair the database
+baseline and integrity checks, and define and enforce authorization for
+maintenance operations before treating Milestone 3 as complete.
+
+Pending verification steps (Docker, PostgreSQL, fresh migrations) and cautions
+for continuing on another machine are tracked in [HANDOFF.md](./HANDOFF.md).
+
+| Check | Result |
+| --- | --- |
+| Backend tests | 19 passed on Python 3.14.10; the tests create an in-memory schema from ORM metadata rather than running migrations. |
+| ML tests | 4 passed on Python 3.14.10, including training and artifact export. |
+| Existing API flow | An isolated in-memory smoke test passed login, prediction, fleet, history, and part statistics using the default v1 model. |
+| Fresh database | `alembic upgrade head` failed with `NoSuchTableError: prediction_logs`. |
+| Frontend | `npm ci` and `npm run build` passed; `npm run lint` fails with an unsupported `--ext` option. Running ESLint without that option also reports missing `typescript-eslint`. |
+| Docker / PostgreSQL | Docker engine is unavailable on this workstation; PostgreSQL and container integration remain unverified. These do not prevent local Milestone 3 development. |
+
+## Milestone 1: Backend Architecture, Relational Modeling & Authentication
+
+**Status**: Foundation implemented; migration, database integrity, and
+authorization gaps remain. Not fully verified for a fresh installation.
 
 ### Objective
 Replace the prototype database setup and mock authentication with a secure, normalized, production-grade foundation using SQLAlchemy 2.0, Alembic migrations, PostgreSQL compatibility, and real bcrypt JWT security.
 
 ### Affected Files
-- `backend/app/db/database.py`, `backend/app/db/base.py`
+- `backend/app/db/database.py`
 - `backend/app/models/user.py`, `backend/app/models/machine.py`, `backend/app/models/part.py`, `backend/app/models/prediction_log.py`, `backend/app/models/work_order.py`
 - `backend/alembic/`, `backend/alembic.ini`
 - `backend/app/core/security.py`, `backend/app/core/middleware.py`, `backend/app/core/logging.py`
@@ -36,23 +56,42 @@ Replace the prototype database setup and mock authentication with a secure, norm
    - Model `Machine` (`id`, `machine_type`, `status`, `install_date`).
    - Model `Part` (`id`, `category`, `name`, `expected_lifespan_days`, `unit_cost`).
    - Model `WorkOrder` (`id`, `machine_id`, `part_id`, `status`, `priority`, `estimated_cost`).
-   - Associate foreign keys and composite indexes in `PredictionLog`.
+   - Declare foreign keys and composite indexes in `PredictionLog`.
+   - **Open**: SQLite connections do not enable foreign-key enforcement. The
+     local `backend/sql_app.db` also has no foreign keys on `prediction_logs`,
+     and its `alembic_version` table has no revision recorded.
 2. **Alembic Migration Setup**:
    - Initialize Alembic environment.
    - Generate initial migration revision `001_initial_schema`.
+   - **Blocked**: The revision alters an existing table instead of creating a
+     fresh schema. Establish and test a baseline for fresh databases and a
+     safe upgrade path for existing data. Back up existing databases before
+     migration; do not blindly stamp them as migrated.
 3. **Production Authentication & Security**:
    - Real bcrypt hashing and verification in `app/core/security.py`.
    - Dependency `get_current_user` checking JWT signature, expiry, and user existence in DB.
    - Seed default initial users (`admin` / `technician`) with hashed passwords.
+   - Data routers require authentication, but role restrictions are not
+     applied. Login auto-registers unknown users and can assign an admin role
+     based on username; seeded credentials are for demo use only. Define a
+     safe account-provisioning and authorization policy before sensitive
+     work-order operations.
 4. **Middleware & Health Probes**:
    - Add Correlation ID (`X-Correlation-ID`) and request execution timer (`X-Process-Time`) middleware.
    - Add `/healthz` and `/readyz` probes.
 5. **Testing**:
-   - Pytest suite covering token generation, password hashing, invalid credentials, and database constraints.
+   - Pytest suite covering token generation, password hashing, invalid
+     credentials, authenticated endpoints, and ORM relationships.
+   - **Open**: Add migration and foreign-key enforcement tests. The current
+     in-memory test setup bypasses Alembic and does not enforce SQLite foreign keys.
 
 ---
 
 ## Milestone 2: Machine Learning Engineering Pipeline & Model Registry
+
+**Status**: The experimental training and evaluation pipeline is implemented
+and tested locally. Model registry, controlled promotion, and production
+validation remain open; the backend still defaults to the legacy v1 model.
 
 ### Objective
 Transform the ML component from loose scripts into an audited, reproducible MLOps pipeline featuring Pandera data validation, baseline comparisons, MLflow experiment tracking, and automated model card generation.
@@ -70,18 +109,51 @@ Transform the ML component from loose scripts into an audited, reproducible MLOp
    - Implement `validate_dataset()` using Pandera to enforce strict schemas on service records.
 2. **Baseline Model Comparison**:
    - Train `DummyClassifier` (chance baseline) and `LogisticRegression` (linear baseline).
-   - Evaluate against `XGBClassifier` using PR-AUC, ROC-AUC, Recall (Class 1), and F1-score.
+   - Evaluate against `XGBClassifier` using average precision (a precision-recall summary), ROC-AUC, Recall (Class 1), and F1-score.
+   - Tune XGBoost on a chronological validation split and evaluate on a later held-out split.
 3. **MLflow Experiment Tracking**:
    - Log runs, parameters (`scale_pos_weight`, `learning_rate`, `max_depth`), metrics, and feature importances.
-4. **Training-Serving Skew Elimination**:
+4. **Training-Serving Consistency (v2)**:
    - Bundle preprocessor and model into a single unified sklearn Pipeline object.
    - Export versioned artifact with explicit metadata schema.
+   - v2 is opt-in: it must be copied into the backend model directory and
+     selected with `MODEL_VERSION=v2.0`. The default v1 artifact still uses
+     `service_type`, which is excluded from v2 due to outcome leakage.
 5. **Testing**:
-   - Unit tests verifying: no future data leakage in train/test splits, deterministic inference outputs, and handling of unseen categorical values.
+   - Tests verify chronological split boundaries, deterministic inference,
+     handling of unseen categorical values, and training/export.
+6. **Remaining registry and reliability work**:
+   - MLflow tracks experiments and artifacts, but no model is registered in
+     an MLflow Model Registry and there is no automated promotion process.
+     Generated v2 outputs and the local MLflow database are Git-ignored and
+     must be regenerated or transferred separately on another machine.
+   - Dependency versions are recorded in the generated model card but are not
+     pinned or locked. Verify reproducibility and serving compatibility before
+     promoting a model.
+   - The data is synthetic and small: non-failure service ages are 100-359
+     days and failure ages are 450-742 days. High scores on this dataset do
+     not establish real-world model performance or safety.
 
 ---
 
 ## Milestone 3: Clean API Services, Repositories & Work Order Lifecycle
+
+**Status**: Not started. Development can begin locally, with the following
+Milestone 1 gaps addressed as the first work before end-to-end acceptance.
+
+### Entry Criteria and Carry-Forward Work
+1. Establish a tested Alembic baseline for a new database and a data-preserving
+   upgrade for an existing database; enable and test foreign-key enforcement.
+   Verify PostgreSQL separately when an authorized environment is available.
+2. Resolve demo auto-registration and username-based admin assignment; define
+   and test roles for prediction, simulation, and work-order operations.
+3. Keep the existing fleet and prediction API contracts compatible with the
+   frontend, or update dependent frontend call sites in the same change.
+4. Design and migrate any technician assignment or prediction linkage needed
+   by work orders; the current `WorkOrder` model has neither.
+5. Add end-to-end tests for authorized and unauthorized requests, validation,
+   prediction-to-work-order flow, history, and failure handling. Keep
+   experimental model predictions out of real maintenance decisions.
 
 ### Objective
 Restructure backend business logic into Repository and Service patterns, upgrade to Pydantic v2 DTOs, and introduce maintenance work order creation to close the business loop on prediction alerts.
@@ -110,6 +182,10 @@ Restructure backend business logic into Repository and Service patterns, upgrade
 ---
 
 ## Milestone 4: Frontend Modernization (TanStack Query, shadcn/ui & Forms)
+
+**Status**: Planned. The current production build passes, but the lint command
+and ESLint configuration/dependencies must be reconciled before lint is used
+as a quality gate.
 
 ### Objective
 Elevate the React frontend to modern industry standards by introducing TanStack Query for server state, shadcn/ui for accessible styling, and React Hook Form + Zod for robust form handling.
@@ -141,6 +217,9 @@ Elevate the React frontend to modern industry standards by introducing TanStack 
 
 ## Milestone 5: Docker Containerization & Local Development Setup
 
+**Status**: Planned. Docker cannot currently be used on this workstation; build
+and PostgreSQL integration checks must run on an authorized machine or in CI.
+
 ### Objective
 Provide a reproducible, multi-service local environment using multi-stage Dockerfiles and Docker Compose.
 
@@ -165,6 +244,9 @@ Provide a reproducible, multi-service local environment using multi-stage Docker
 ---
 
 ## Milestone 6: Automated CI/CD Pipelines (GitHub Actions)
+
+**Status**: Planned. Resolve the current frontend lint setup before making it
+a required CI gate.
 
 ### Objective
 Implement enterprise CI/CD pipelines enforcing code quality gates, automated test execution, ML model validation, and container builds.
