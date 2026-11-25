@@ -1,5 +1,6 @@
 import pytest
 from app.core.security import verify_password, get_password_hash, create_access_token, decode_access_token
+from app.models.user import User
 
 def test_password_hashing_and_verification():
     raw_pwd = "SuperSecretPassword!123"
@@ -37,13 +38,69 @@ def test_login_invalid_password(client, test_user):
     assert response.status_code == 401
     assert "Incorrect username or password" in response.json()["detail"]
 
-def test_login_auto_register_new_user(client):
+def test_login_does_not_register_unknown_users(client, db_session):
     response = client.post(
         "/api/v1/auth/token",
         data={"username": "brand_new_user", "password": "password999"},
     )
-    assert response.status_code == 200
-    assert "access_token" in response.json()
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Incorrect username or password"
+    assert db_session.query(User).count() == 0
+
+
+def test_privileged_usernames_are_not_trusted(client):
+    response = client.post(
+        "/api/v1/auth/token",
+        data={"username": "supervisor", "password": "password999"},
+    )
+    assert response.status_code == 401
+
+
+def test_admin_can_create_user_who_can_log_in(client, admin_auth_headers):
+    response = client.post(
+        "/api/v1/auth/users",
+        json={"username": "new.tech", "password": "long-enough-pw", "role": "technician"},
+        headers=admin_auth_headers,
+    )
+    assert response.status_code == 201
+    assert response.json()["role"] == "technician"
+    assert "hashed_password" not in response.json()
+
+    login = client.post(
+        "/api/v1/auth/token",
+        data={"username": "new.tech", "password": "long-enough-pw"},
+    )
+    assert login.status_code == 200
+
+
+def test_create_user_rejects_duplicates_and_weak_input(client, admin_auth_headers, test_user):
+    duplicate = client.post(
+        "/api/v1/auth/users",
+        json={"username": test_user.username, "password": "long-enough-pw"},
+        headers=admin_auth_headers,
+    )
+    assert duplicate.status_code == 409
+
+    short_password = client.post(
+        "/api/v1/auth/users",
+        json={"username": "someone", "password": "short"},
+        headers=admin_auth_headers,
+    )
+    assert short_password.status_code == 422
+
+    unknown_role = client.post(
+        "/api/v1/auth/users",
+        json={"username": "someone", "password": "long-enough-pw", "role": "superuser"},
+        headers=admin_auth_headers,
+    )
+    assert unknown_role.status_code == 422
+
+
+def test_create_user_requires_admin(client, auth_headers):
+    payload = {"username": "sneaky", "password": "long-enough-pw", "role": "admin"}
+
+    assert client.post("/api/v1/auth/users", json=payload).status_code == 401
+    assert client.post("/api/v1/auth/users", json=payload, headers=auth_headers).status_code == 403
 
 def test_read_users_me_authenticated(client, auth_headers, test_user):
     response = client.get("/api/v1/auth/me", headers=auth_headers)

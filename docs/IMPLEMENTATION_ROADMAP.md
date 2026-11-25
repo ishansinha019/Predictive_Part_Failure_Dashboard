@@ -2,7 +2,7 @@
 
 **Project Name**: Predictive Part Failure Dashboard (PPFD)  
 **Execution Strategy**: Milestone-Based Incremental Delivery  
-**Document Version**: 2.1
+**Document Version**: 2.2
 
 ---
 
@@ -14,29 +14,33 @@
 
 ---
 
-## Current Status (reviewed 2026-11-25)
+## Current Status (reviewed 2026-11-25, after Milestone 3 backend work)
 
-Milestone 3 development can begin, but the project is **not yet ready for a
-fully verified work-order lifecycle or production use**. Repair the database
-baseline and integrity checks, and define and enforce authorization for
-maintenance operations before treating Milestone 3 as complete.
+The Milestone 3 backend (repositories, services, work-order lifecycle, roles,
+migrations) is implemented and verified **locally on SQLite only**. It is not
+production-ready until PostgreSQL and Docker are verified on an authorized
+machine, a work-order UI exists (Milestone 4), and the carried-over cautions in
+[HANDOFF.md](./HANDOFF.md) are resolved. Frontend lint is still broken.
 
-Pending verification steps (Docker, PostgreSQL, fresh migrations) and cautions
-for continuing on another machine are tracked in [HANDOFF.md](./HANDOFF.md).
+Pending verification steps (Docker, PostgreSQL) and cautions for continuing on
+another machine are tracked in [HANDOFF.md](./HANDOFF.md).
 
 | Check | Result |
 | --- | --- |
-| Backend tests | 19 passed on Python 3.14.10; the tests create an in-memory schema from ORM metadata rather than running migrations. |
-| ML tests | 4 passed on Python 3.14.10, including training and artifact export. |
-| Existing API flow | An isolated in-memory smoke test passed login, prediction, fleet, history, and part statistics using the default v1 model. |
-| Fresh database | `alembic upgrade head` failed with `NoSuchTableError: prediction_logs`. |
-| Frontend | `npm ci` and `npm run build` passed; `npm run lint` fails with an unsupported `--ext` option. Running ESLint without that option also reports missing `typescript-eslint`. |
-| Docker / PostgreSQL | Docker engine is unavailable on this workstation; PostgreSQL and container integration remain unverified. These do not prevent local Milestone 3 development. |
+| Backend tests | 60 passed on Python 3.14.10 (includes API integration, role, migration and foreign-key tests). |
+| ML tests | 4 passed on Python 3.14.10 (not re-run after Milestone 3; ML code was untouched). |
+| Fresh database | `alembic upgrade head` now succeeds (SQLite); migrated schema matches the ORM models; downgrade to base works; seed script runs. |
+| Existing database | On a **copy** of the real local SQLite DB: refused to upgrade because 64 prediction logs referenced unregistered machines; `alembic -x repair_orphans=true upgrade head` registered 55 machines, kept all 524 logs, and `PRAGMA foreign_key_check`/`integrity_check` were clean. The original file was not modified. |
+| Live API smoke test | Real server on a fresh seeded SQLite DB: unknown-user login 401, viewer read-only, technician predict, work-order create/409/list, scan admin-only, OpenAPI tags present. |
+| Frontend | `npm run build` passed with the fleet request now passing `limit=500`; `npm run lint` still fails with an unsupported `--ext` option (and missing `typescript-eslint`). No work-order UI yet. |
+| PostgreSQL | DDL and repository queries were only **compiled** with the PostgreSQL dialect; no PostgreSQL server was run. Unverified. |
+| Docker | Docker engine is unavailable on this workstation; image builds and containers remain unverified. |
 
 ## Milestone 1: Backend Architecture, Relational Modeling & Authentication
 
-**Status**: Foundation implemented; migration, database integrity, and
-authorization gaps remain. Not fully verified for a fresh installation.
+**Status**: Foundation implemented. The baseline migration, foreign-key
+enforcement and authorization gaps were fixed in Milestone 3 (see below);
+PostgreSQL is still unverified.
 
 ### Objective
 Replace the prototype database setup and mock authentication with a secure, normalized, production-grade foundation using SQLAlchemy 2.0, Alembic migrations, PostgreSQL compatibility, and real bcrypt JWT security.
@@ -138,22 +142,46 @@ Transform the ML component from loose scripts into an audited, reproducible MLOp
 
 ## Milestone 3: Clean API Services, Repositories & Work Order Lifecycle
 
-**Status**: Not started. Development can begin locally, with the following
-Milestone 1 gaps addressed as the first work before end-to-end acceptance.
+**Status**: Backend implemented and verified locally on SQLite (60 backend tests,
+live smoke test). Not complete: PostgreSQL/Docker are unverified, the frontend
+has no work-order UI yet (Milestone 4), and the review items below remain open.
 
-### Entry Criteria and Carry-Forward Work
-1. Establish a tested Alembic baseline for a new database and a data-preserving
-   upgrade for an existing database; enable and test foreign-key enforcement.
-   Verify PostgreSQL separately when an authorized environment is available.
-2. Resolve demo auto-registration and username-based admin assignment; define
-   and test roles for prediction, simulation, and work-order operations.
-3. Keep the existing fleet and prediction API contracts compatible with the
-   frontend, or update dependent frontend call sites in the same change.
-4. Design and migrate any technician assignment or prediction linkage needed
-   by work orders; the current `WorkOrder` model has neither.
-5. Add end-to-end tests for authorized and unauthorized requests, validation,
-   prediction-to-work-order flow, history, and failure handling. Keep
-   experimental model predictions out of real maintenance decisions.
+### Entry Criteria and Carry-Forward Work (all addressed)
+1. **Done** - Alembic baseline (`d9bb4a8c09be`) creates a new database; a
+   data-preserving upgrade handles pre-Alembic databases (opt-in
+   `-x repair_orphans=true` registers machines referenced only by prediction
+   logs). SQLite foreign keys are enforced by the app and tested. See
+   `backend/alembic/README`. PostgreSQL still needs verification.
+2. **Done** - Login no longer auto-registers users or grants admin by name.
+   Admins create accounts via `POST /api/v1/auth/users`. Roles: `viewer`
+   (read-only), `technician` (predict, create/update work orders, self-assign),
+   `admin` (everything, assign any technician, daily scan, user creation).
+3. **Done** - Fleet and prediction responses only gained fields. Behaviour
+   changes: predicting for an unknown machine or part, and history/part stats
+   for unknown IDs, now return 404 (they previously logged orphan rows or
+   returned empty data); viewers get 403 on prediction; the simulation
+   endpoint is admin-only; simulation recommendations now use the same text as
+   predictions. `FleetPage` requests `limit=500`.
+4. **Done** - Migration `a3f1c2d4e5b6` adds `assigned_technician_id`,
+   `prediction_log_id`, `created_by_id` to work orders, `model_version` to
+   prediction logs, and a unique index allowing one active work order per
+   machine and part.
+5. **Done** - `tests/test_api_v1.py` covers roles, validation, pagination,
+   predict -> work order -> history, failures, and experimental-model rules.
+   Predictions from versions in `EXPERIMENTAL_MODEL_VERSIONS` (default `v2.0`),
+   historical records, and risk at or below 0.5 cannot create work orders.
+
+### Open items after Milestone 3
+- Run `alembic upgrade head`, the seed script and the test suite against a real
+  PostgreSQL server (the migrations were only tested on SQLite).
+- Decide whether the 55 machines auto-registered in the real local database
+  (type taken from the ID prefix) need review before relying on fleet data.
+- No refresh tokens, password change/reset, user deactivation, or rate limiting.
+  Seeded demo passwords must not be used outside local development.
+- Work-order `estimated_cost` defaults to the part unit cost (no labour rate is
+  modelled). Concurrent updates are not versioned (last write wins).
+- `datetime.utcnow()` is still used by older models (deprecation warnings).
+- Dependencies are not pinned; frontend lint is still broken.
 
 ### Objective
 Restructure backend business logic into Repository and Service patterns, upgrade to Pydantic v2 DTOs, and introduce maintenance work order creation to close the business loop on prediction alerts.

@@ -1,6 +1,25 @@
 Disclaimer: This project utilizes a synthetic dataset generated to simulate real-world service order patterns. 
 All data is synthetically created and does not contain any real, proprietary, or confidential information from any company.
 
+## Backend API and work orders
+
+From `backend`, set `DATABASE_URL` and `SECRET_KEY` in `.env`, then run
+`alembic upgrade head` and `python seed_db.py` (see `backend/alembic/README`,
+including the notes for databases created before Alembic) and start the API with
+`uvicorn app.main:app`. Interactive documentation is served at `/docs`.
+
+Accounts are never created by logging in. The seed script creates demo users
+(`admin`, `technician`, `operator`; demo-only passwords) and administrators add
+others with `POST /api/v1/auth/users`. Roles: `viewer` is read-only,
+`technician` can predict and create or update work orders (and assign
+themselves), `admin` can also assign any technician, run the daily scan and
+create users. A work order is raised with `POST /api/v1/work-orders` from a
+`prediction_id` returned by `POST /api/v1/predictions/predict`; predictions
+from experimental models (`EXPERIMENTAL_MODEL_VERSIONS`, default `v2.0`) are
+rejected. Run the tests with `python -m pytest` from `backend`.
+
+See [the handoff notes](docs/HANDOFF.md) for open verification items.
+
 ## ML training and evaluation
 
 From `ml_model`, install `requirements.txt` in a Python virtual environment,

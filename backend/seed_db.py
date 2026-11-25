@@ -137,7 +137,8 @@ def seed_database():
 
         print("--- 4. Seeding Sample Work Orders ---")
         sample_wo = db.query(models.WorkOrder).first()
-        if not sample_wo:
+        sample_machine = db.get(models.Machine, "M-185")
+        if not sample_wo and sample_machine is not None:
             db.add(models.WorkOrder(
                 machine_id="M-185",
                 part_id="P-BRG-02",

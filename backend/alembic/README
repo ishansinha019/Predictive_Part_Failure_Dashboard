@@ -3,12 +3,39 @@ the application or running the seed/data-generation scripts:
 
     alembic upgrade head
 
-Warning: the current initial revision assumes tables already exist and fails
-on a fresh database. Do not run it against an existing database without first
-backing up the database and verifying its schema and migration state. A proper
-baseline migration is still needed.
-
-The application and scripts do not create tables automatically. Use Alembic
-to manage schema changes; generate a revision with:
+The application and scripts do not create tables automatically. Alembic is the
+only way the schema changes. Generate a revision with:
 
     alembic revision --autogenerate -m "describe the schema change"
+
+New database
+------------
+`alembic upgrade head` creates the full schema (revision 001 is a real
+baseline, 002 adds work-order lifecycle columns). Then run `python seed_db.py`
+for demo users, the parts catalog and sample data. The seeded passwords are
+demo-only: do not use them outside local development.
+
+Existing database created before Alembic was used
+-------------------------------------------------
+Back up the database file first. Revision 001 keeps existing tables and data,
+and adds the missing NOT NULL constraints, indexes and foreign keys on
+`prediction_logs`. It refuses to continue if prediction logs reference machines
+or parts that do not exist. Missing machines (typically from predictions made
+for IDs that were never registered) can be registered automatically:
+
+    alembic -x repair_orphans=true upgrade head
+
+Orphaned parts cannot be invented and must be fixed manually. Revision 002
+refuses to continue if several active work orders exist for the same machine
+and part; cancel or complete the duplicates first.
+
+Do not `alembic stamp head` on an existing database: it skips these repairs.
+
+Notes
+-----
+- Downgrading revision 001 drops every application table and its data.
+- SQLite foreign keys are enabled by the application on every connection;
+  migrations run without them, as recommended for SQLite batch operations.
+- Tests run migrations on temporary SQLite databases and compare the result
+  with the ORM models. PostgreSQL has not been exercised yet; run
+  `alembic upgrade head` against a disposable PostgreSQL database before relying on it.

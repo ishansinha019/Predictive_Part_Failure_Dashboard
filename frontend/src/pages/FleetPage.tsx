@@ -47,7 +47,7 @@ const FleetPage: React.FC = () => {
       setLoading(true);
 
       try {
-        const response = await apiService.get("/machines/");
+        const response = await apiService.get("/machines/", { params: { limit: 500 } });
         const machineIds = response.data.map((m: any) => m.machine_id);
         machineIds.sort();
 

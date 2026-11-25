@@ -13,6 +13,8 @@ class PredictionLog(Base):
     prediction_score = Column(Float, nullable=False)
     recommendation = Column(String(255), nullable=False)
     prediction_timestamp = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    # NULL for historical service records that were not produced by a model.
+    model_version = Column(String(20), nullable=True)
 
     machine = relationship("Machine", back_populates="prediction_logs")
     part = relationship("Part", back_populates="prediction_logs")
